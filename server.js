@@ -1,5 +1,5 @@
 const express = require('express');
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 const app = express();
 const sqlite3 = require('sqlite3').verbose();
 const inputCheck = require('./utils/inputCheck');
@@ -17,7 +17,11 @@ const db = new sqlite3.Database('./db/election.db', err => {
 
 //Get all candidates
 app.get('/api/candidates', (req, res) => {
-    const sql = `SELECT * FROM candidates`;
+    const sql = `SELECT candidates.*, parties.name
+                 AS party_name
+                 FROM candidates
+                 LEFT JOIN parties
+                 ON candidates.party_id = parties.id`;
     const params = [];
     db.all(sql, params, (err, rows) => {
         if (err) {
@@ -31,14 +35,27 @@ app.get('/api/candidates', (req, res) => {
     });
 });
 
+// Get single candidate
+app.get('/api/candidate/:id', (req, res) => {
+    const sql = `SELECT candidates.*, parties.name
+                 AS party_name
+                 FROM candidates
+                 LEFT JOIN parties
+                 ON candidates.party_id = parties.id
+                 WHERE id = ?`;
+    const params = [req.params.id];
+    db.get(sql, params, (err, row) => {
+        if (err) {
+            res.status(400).json({ error: err.message });
+            return;
+        }
 
-// // GET a single candidate
-// db.get(`SELECT * FROM candidates WHERE id = 1`, (err, row) => {
-//     if (err) {
-//         console.log(err);
-//     }
-//     console.log(row);
-// });
+        res.json({
+            message: 'success',
+            data: row
+        });
+    });
+});
 
 // Delete a candidate
 app.delete('/api/candidate/:id', (req, res) => {
@@ -54,24 +71,6 @@ app.delete('/api/candidate/:id', (req, res) => {
         res.json({
             message: 'succesfully deleted',
             changes: this.changes
-        });
-    });
-});
-
-// Get single candidate
-app.get('/api/candidate/:id', (req, res) => {
-    const sql = `SELECT * FROM candidates 
-                 WHERE id = ?`;
-    const params = [req.params.id];
-    db.get(sql, params, (err, row) => {
-        if (err) {
-            res.status(400).json({ error: err.message });
-            return;
-        }
-
-        res.json({
-            message: 'success',
-            data: row
         });
     });
 });
